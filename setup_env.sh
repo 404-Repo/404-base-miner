@@ -59,6 +59,8 @@ SH
 
 pip install --index-url https://download.pytorch.org/whl/cu128 torch==2.7.1 torchvision==0.22.1
 pip install -r requirements.txt
+pip install flash-attn==2.8.0.post2 --no-build-isolation --no-cache-dir
+pip install flashinfer-python==0.3.0 flashinfer-cubin==0.4.0rc2 --no-build-isolation
 
 # Store the path of the Conda interpreter
 CONDA_INTERPRETER_PATH=$(which python)
