@@ -60,7 +60,7 @@ WORKDIR /app/trellis-generation
 RUN git checkout initial_commit
 
 RUN pip install --index-url https://download.pytorch.org/whl/cu128 torch==2.7.1 torchvision==0.22.1 packaging
-pip install flash-attn==2.8.0.post2 --no-build-isolation --no-cache-dir
+RUN pip install flash-attn==2.8.0.post2 --no-build-isolation --no-cache-dir
 RUN pip install flashinfer-python==0.3.0 flashinfer-cubin==0.4.0rc2 --no-build-isolation
 RUN pip install -r requiremetns.txt
 
