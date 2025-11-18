@@ -20,9 +20,6 @@ class BaseBGRemover(ABC):
     def remove_bg(self, image: Image) -> tuple[Image, bool]:
         pass
 
-    def optimize(self):
-        pass
-
     def is_image_valid(self, image: Image) -> bool:
         """ Function that checks if the image after background removal is empty or barely filled in with image data. """
 
@@ -55,9 +52,3 @@ class BaseBGRemover(ABC):
         # Convert back to PIL image
         filtered_img = Image.fromarray(filtered_np, mode="RGBA")
         return filtered_img
-
-    def _create_dummy_image(self) -> Image.Image:
-        width, height = 256, 256
-        array = np.random.randint(0, 256, (height, width, 3), dtype=np.uint8)
-        image = Image.fromarray(array)
-        return image

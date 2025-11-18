@@ -30,12 +30,3 @@ class Ben2BGRemover(BaseBGRemover):
         # valid = self.is_image_valid(result_image)
         valid = True
         return result_image, valid
-
-    def optimize(self):
-        # logger.info("🔦 running torch compilation for BEN2 model...")
-        # self._bg_remover = torch.compile(self._bg_remover, mode="max-autotune", fullgraph = True)
-        # image = self._create_dummy_image()
-        # for _ in range(3):
-        #     self._bg_remover.inference(image, refine_foreground=False)
-        # logger.info("🔦 Finished torch compilation.")
-        pass

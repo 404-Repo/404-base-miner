@@ -51,14 +51,3 @@ class BiRefNetBGRemover(BaseBGRemover):
         valid = True
 
         return result_image, valid
-
-    def optimize(self):
-        # logger.info("🔦 running torch compilation for BiRefnet model...")
-        # self._bg_remover = torch.compile(self._bg_remover, mode="max-autotune", fullgraph=True)
-        #
-        # image = self._create_dummy_image()
-        # input_image = self._transform_image(image).unsqueeze(0).to(self._device).half()
-        # with torch.no_grad():
-        #     self._bg_remover(input_image)
-        # logger.info("🔦 Finished torch compilation.")
-        pass
