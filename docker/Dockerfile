@@ -59,7 +59,7 @@ ENV TORCH_CUDA_ARCH_LIST="8.9, 12.0"
 RUN mkdir -p /app
 WORKDIR /app
 
-RUN git clone -b initial_commit https://${GITHUB_USER}:${GITHUB_TOKEN}@github.com/404-Repo/404-base-miner.git
+RUN git clone https://github.com/404-Repo/404-base-miner.git
 WORKDIR /app/404-base-miner
 
 RUN pip install packaging &&\
