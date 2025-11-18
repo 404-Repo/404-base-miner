@@ -186,20 +186,3 @@ class Config():
                 lines = f.readlines()
                 self.save_last = int([l.strip() for l in lines if "'{}')".format(self.task) in l and 'val_last=' in l][0].split('val_last=')[-1].split()[0])
                 self.save_step = int([l.strip() for l in lines if "'{}')".format(self.task) in l and 'step=' in l][0].split('step=')[-1].split()[0])
-
-
-# Return task for choosing settings in shell scripts.
-if __name__ == '__main__':
-    import argparse
-
-
-    parser = argparse.ArgumentParser(description='Only choose one argument to activate.')
-    parser.add_argument('--print_task', action='store_true', help='print task name')
-    parser.add_argument('--print_testsets', action='store_true', help='print validation set')
-    args = parser.parse_args()
-
-    config = Config()
-    for arg_name, arg_value in args._get_kwargs():
-        if arg_value:
-            print(config.__getattribute__(arg_name[len('print_'):]))
-
