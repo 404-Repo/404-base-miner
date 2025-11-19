@@ -7,6 +7,7 @@ from time import time
 from PIL import Image
 from concurrent.futures import ThreadPoolExecutor
 
+import pyspz
 import torch
 import uvicorn
 from loguru import logger
@@ -67,6 +68,22 @@ async def generate_model(prompt_image_file: UploadFile = File(...)) -> Response:
     logger.info(f"Task completed.")
 
     return StreamingResponse(buffer, media_type="application/octet-stream")
+
+@app.post("/generate-spz")
+async def generate_model_spz(prompt_image_file: UploadFile = File(...)) -> Response:
+    """ Generates a 3D model as a PLY buffer """
+
+    logger.info("Task received. Prompt-Image")
+
+    contents = await prompt_image_file.read()
+    prompt_image = Image.open(BytesIO(contents))
+
+    loop = asyncio.get_running_loop()
+    buffer = await loop.run_in_executor(executor, generation_block, prompt_image)
+    logger.info(f"Task completed.")
+
+    compressed = pyspz.compress(buffer.getbuffer(), workers=-1)
+    return Response(compressed, media_type="application/octet-stream")
 
 
 if __name__ == "__main__":

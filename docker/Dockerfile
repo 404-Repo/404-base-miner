@@ -39,6 +39,7 @@ RUN apt-get update && apt-get install -y \
     cuda-nvcc-12-8 \
     cuda-libraries-dev-12-8 \
     cuda-nvtx-12-8 \
+    unzip \
     && rm -rf /var/lib/apt/lists/*
 
 # rebinding names for python, pip, gcc, g++
@@ -63,6 +64,11 @@ RUN pip install packaging &&\
     pip install flash-attn==2.8.0.post2 --no-build-isolation --no-cache-dir &&\
     pip install flashinfer-python==0.3.0 flashinfer-cubin==0.4.0rc2 &&\
     pip install -r requirements.txt
+
+RUN wget https://github.com/404-Repo/spz/releases/download/v.0.1.2/pyspz-wheels-ubuntu-latest.zip && \
+    unzip pyspz-wheels-ubuntu-latest.zip && \
+    pip install pyspz-1.0.0-cp311-cp311-manylinux_2_34_x86_64.whl && \
+    rm -rf pyspz-wheels-ubuntu-latest.zip *.whl
 
 EXPOSE 10006
 CMD ["python",  "serve.py"]
