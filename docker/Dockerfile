@@ -56,11 +56,8 @@ ENV LD_LIBRARY_PATH=$CUDA_HOME/lib64:$LD_LIBRARY_PATH
 ENV TORCH_CUDA_ARCH_LIST="8.9, 12.0"
 
 # preparing project
-RUN mkdir -p /app
 WORKDIR /app
-
-RUN git clone https://github.com/404-Repo/404-base-miner.git
-WORKDIR /app/404-base-miner
+COPY . /app
 
 RUN pip install packaging &&\
     pip install flash-attn==2.8.0.post2 --no-build-isolation --no-cache-dir &&\
