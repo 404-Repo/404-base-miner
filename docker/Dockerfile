@@ -57,12 +57,17 @@ ENV TORCH_CUDA_ARCH_LIST="8.9, 12.0"
 
 # preparing project
 WORKDIR /app
-COPY . /app
 
-RUN pip install packaging &&\
-    pip install flash-attn==2.8.0.post2 --no-build-isolation --no-cache-dir &&\
-    pip install flashinfer-python==0.3.0 flashinfer-cubin==0.4.0rc2 &&\
-    pip install -r requirements.txt
+# Copy requirements first for better caching
+COPY requirements.txt /app/
+
+RUN pip install packaging
+RUN pip install flash-attn==2.8.0.post2 --no-build-isolation --no-cache-dir
+RUN pip install flashinfer-python==0.3.0 flashinfer-cubin==0.4.0rc2
+RUN pip install -r requirements.txt
+
+# Copy source code after dependencies
+COPY . /app
 
 EXPOSE 10006
 CMD ["python",  "serve.py"]
