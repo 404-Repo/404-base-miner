@@ -53,7 +53,7 @@ ENV CUDA_HOME=/usr/local/cuda-12.8
 ENV PATH=$CUDA_HOME/bin:$PATH
 ENV LD_LIBRARY_PATH=$CUDA_HOME/lib64:$LD_LIBRARY_PATH
 
-ENV TORCH_CUDA_ARCH_LIST="8.9, 12.0"
+ENV TORCH_CUDA_ARCH_LIST="8.9;9.0;12.0"
 
 # preparing project
 WORKDIR /app
@@ -61,7 +61,7 @@ COPY . /app
 
 RUN pip install packaging &&\
     pip install flash-attn==2.8.0.post2 --no-build-isolation --no-cache-dir &&\
-    pip install flashinfer-python==0.3.0 flashinfer-cubin==0.4.0rc2 &&\
+    pip install flashinfer-python==0.5.2 flashinfer-cubin==0.5.2 --no-build-isolation --no-cache-dir &&\
     pip install -r requirements.txt
 
 EXPOSE 10006
