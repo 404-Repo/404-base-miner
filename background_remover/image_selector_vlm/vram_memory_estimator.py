@@ -89,7 +89,7 @@ class VRAMUsageEstimator:
 
         # Component 1: Overhead Memory (Static)
         # Fixed memory for non-PyTorch components like CUDA kernels, etc.
-        overhead_memory_gb = 2.5
+        overhead_memory_gb = 3.0
 
         # Component 2: PyTorch Activation Peak Memory (Dynamic)
         # Memory for storing intermediate calculations (activations) during the forward pass.
