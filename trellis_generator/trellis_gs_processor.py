@@ -72,6 +72,12 @@ class GaussianProcessor:
         gc.collect()
         torch.cuda.empty_cache()
 
+    def warmup_generator(self):
+        """ Function for warming up the generator. """
+
+        dummy = Image.new("RGB", (64, 64), color=(128, 128, 128))
+        self.get_model_from_image_as_ply_obj(image=dummy, seed=0)
+
     @staticmethod
     def _get_random_index_cycler(list_size: int):
         """
