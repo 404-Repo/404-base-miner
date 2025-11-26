@@ -19,7 +19,15 @@ os.environ['ATTN_BACKEND'] = 'flash-attn' # 'flash-attn', 'xformers'
 
 app = FastAPI()
 executor = ThreadPoolExecutor(max_workers=1)
-gaussian_processor = GaussianProcessor((int(1024/2), int(1024/2), 3))
+
+major, minor = torch.cuda.get_device_capability(0)
+
+if major == 9:
+    vllm_flash_attn_backend = "FLASH_ATTN"
+else:
+    vllm_flash_attn_backend = "FLASHINFER"
+
+gaussian_processor = GaussianProcessor((int(1024/2), int(1024/2), 3), vllm_flash_attn_backend)
 gaussian_processor.load_models()
 
 

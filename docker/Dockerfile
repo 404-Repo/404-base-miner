@@ -53,7 +53,7 @@ ENV CUDA_HOME=/usr/local/cuda-12.8
 ENV PATH=$CUDA_HOME/bin:$PATH
 ENV LD_LIBRARY_PATH=$CUDA_HOME/lib64:$LD_LIBRARY_PATH
 
-ENV TORCH_CUDA_ARCH_LIST="8.9, 12.0"
+ENV TORCH_CUDA_ARCH_LIST="8.9;9.0;12.0"
 
 # preparing project
 WORKDIR /app
@@ -68,6 +68,7 @@ RUN pip install -r requirements.txt
 
 # Copy source code after dependencies
 COPY . /app
+
 
 EXPOSE 10006
 CMD ["python",  "serve.py"]

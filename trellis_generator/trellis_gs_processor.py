@@ -9,6 +9,7 @@ import torch
 import torch.distributed as dist
 import numpy as np
 
+from loguru import logger
 from trellis_generator.pipelines import TrellisImageTo3DPipeline
 from background_remover.ray_bg_remover import RayBGRemoverProcessor
 from background_remover.bg_removers.ben2_bg_remover import Ben2BGRemover
@@ -33,6 +34,9 @@ class GaussianProcessor:
     """Generates 3d models and videos"""
 
     def __init__(self, image_shape: tuple[int, int, int], vllm_flash_attn_backend: str = "FLASHINFER") -> None:
+        logger.info(f"VLLM FLASH ATTENTION backend: {vllm_flash_attn_backend}")
+        logger.info(f"TRELLIS ATTENTION backend: {os.environ['ATTN_BACKEND']}")
+
         self._bg_removers_workers: list[RayBGRemoverProcessor] = []
         self._vlm_image_selector = ImageSelector(3, image_shape, vllm_flash_attn_backend)
         self._device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -106,7 +110,7 @@ class GaussianProcessor:
         self.gaussians = outputs["gaussian"][0]
 
         T = np.array([0, 0, 0])
-        R = self.gaussians.rotate_by_euler_angles(-90.0, 0.0, 0.0)
+        R = self.gaussians.rotate_by_euler_angles(90.0, 0.0, 0.0)
         self.gaussians.transform_data(T, R)
 
         buffer = BytesIO()
