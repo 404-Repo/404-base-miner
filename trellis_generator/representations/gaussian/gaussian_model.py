@@ -1,10 +1,9 @@
 import torch
 import numpy as np
 from plyfile import PlyData, PlyElement
-from scipy.spatial.transform import Rotation
 
 from .general_utils import inverse_sigmoid, strip_symmetric, build_scaled_rotation_matrices
-from .sh_utils import SHRotator
+import utils3d
 
 
 class Gaussian:
@@ -97,6 +96,7 @@ class Gaussian:
     def from_scaling(self, scales):
         scales = torch.sqrt(torch.square(scales) - self.mininum_kernel_size ** 2)
         self._scaling = self.inverse_scaling_activation(scales) - self.scale_bias
+
         
     def from_rotation(self, rots):
         self._rotation = rots - self.rots_bias[None, :]
@@ -122,13 +122,20 @@ class Gaussian:
             l.append('rot_{}'.format(i))
         return l
 
-    def save_ply(self, path):
+    def save_ply(self, path, transform=[[1, 0, 0], [0, 0, -1], [0, 1, 0]]):
         xyz = self.get_xyz.detach().cpu().numpy()
         normals = np.zeros_like(xyz)
         f_dc = self._features_dc.detach().transpose(1, 2).flatten(start_dim=1).contiguous().cpu().numpy()
         opacities = inverse_sigmoid(self.get_opacity).detach().cpu().numpy()
         scale = torch.log(self.get_scaling).detach().cpu().numpy()
         rotation = (self._rotation + self.rots_bias[None, :]).detach().cpu().numpy()
+
+        if transform is not None:
+            transform = np.array(transform)
+            xyz = np.matmul(xyz, transform.T)
+            rotation = utils3d.numpy.quaternion_to_matrix(rotation)
+            rotation = np.matmul(transform, rotation)
+            rotation = utils3d.numpy.matrix_to_quaternion(rotation)
 
         dtype_full = [(attribute, 'f4') for attribute in self.construct_list_of_attributes()]
 
@@ -192,74 +199,3 @@ class Gaussian:
         self._opacity = self.inverse_opacity_activation(opacities) - self.opacity_bias
         self._scaling = self.inverse_scaling_activation(torch.sqrt(torch.square(scales) - self.mininum_kernel_size ** 2)) - self.scale_bias
         self._rotation = rots - self.rots_bias[None, :]
-
-    def rotate_by_euler_angles(self, x: float, y: float, z: float):
-        """
-        rotate in z-y-x order, radians as unit
-        """
-
-        return Rotation.from_euler('xyz', [x, y, z], degrees=True).as_matrix().astype(np.float32)
-
-    def transform_xyz(self, T, R, S, xyz):
-        world_transformed = (xyz @ (R @ S).T + T).astype(np.float32)
-        aabb_np = self.aabb.cpu().numpy()
-
-        # Convert back to normalized space before storing in self._xyz
-        return (world_transformed - aabb_np[:3]) / aabb_np[3:]
-    
-    def batch_compose_rs(self, R2, S2, r1, s1):
-        w, x, y, z = r1.T  # (4, n)
-        R1 = Rotation.from_quat(np.stack([x, y, z, w], axis=-1)).as_matrix()
-        S1 = np.eye(3) * s1[..., np.newaxis]
-
-        R2S2 = R2 @ S2
-        R1S1 = np.einsum('bij,bjk->bik', R1, S1)
-        RS = np.einsum('ij,bjk->bik', R2S2, R1S1)
-        return RS
-
-    def batch_decompose_rs(self, RS):
-        sx = np.linalg.norm(RS[..., 0], axis=-1)
-        sy = np.linalg.norm(RS[..., 1], axis=-1)
-        sz = np.linalg.norm(RS[..., 2], axis=-1)
-
-        RS[..., 0] /= sx[..., np.newaxis]
-        RS[..., 1] /= sy[..., np.newaxis]
-        RS[..., 2] /= sz[..., np.newaxis]
-        x, y, z, w = Rotation.from_matrix(RS).as_quat().T
-        r = np.stack([w, x, y, z], axis=-1)
-        s = np.stack([sx, sy, sz], axis=-1)
-        return r, s
-
-    def batch_rotate_sh(self, R, shs_in, max_sh_degree=3):
-        # shs_in: (n, 3, deg)
-        # SH is in yzx order so here shift the order of rot mat
-        rot_fn = SHRotator(R, deg=max_sh_degree)
-        shs_out = np.stack([
-            rot_fn(shs_in[..., 0, :]),
-            rot_fn(shs_in[..., 1, :]),
-            rot_fn(shs_in[..., 2, :])
-        ], axis=-2)
-        return shs_out
-
-    def transform_data(self, new_position: np.ndarray, rotation_matrix: np.ndarray, scale=1.0):
-        xyz = self.get_xyz.detach().cpu().numpy().astype(np.float32)
-        rotation = self.get_rotation.detach().cpu().numpy().astype(np.float32)
-
-        # object to world
-        S = (np.eye(3) * scale).astype(np.float32)
-        R = rotation_matrix.astype(np.float32)
-        T = new_position.astype(np.float32)
-        self._xyz = torch.tensor(self.transform_xyz(T, R, S, xyz)).to(self.device).to(torch.float32)
-
-        r, s = rotation.astype(np.float32), self.scaling_activation(self.get_scaling).detach().cpu().numpy().astype(np.float32)
-        RS = self.batch_compose_rs(R, S, r, s).astype(np.float32)
-        r, s = self.batch_decompose_rs(RS)
-
-        # self._rotation = torch.tensor(r).to(self.device).to(torch.float32)
-        self.from_rotation(torch.tensor(r).to(self.device).to(torch.float32))
-        # self._scaling = self.inverse_scaling_activation(torch.tensor(s)).to(self.device).to(torch.float32)
-
-        if self.sh_degree > 0:
-            shs_out = self.batch_rotate_sh(R, self.get_features.detach().cpu().numpy(), self.sh_degree)
-            self._features_dc = torch.tensor(shs_out[..., :, :1]).to(self.device)
-            self._features_rest = torch.tensor(shs_out[..., :, 1:]).to(self.device)

@@ -1,12 +1,12 @@
 import gc
 import random
+import os
 from io import BytesIO
 from PIL import Image
 
 import ray
 import torch
 import torch.distributed as dist
-import numpy as np
 
 from loguru import logger
 from trellis_generator.pipelines import TrellisImageTo3DPipeline
@@ -101,10 +101,6 @@ class GaussianProcessor:
             image_no_bg,
         )
         self.gaussians = outputs["gaussian"][0]
-
-        T = np.array([0, 0, 0])
-        R = self.gaussians.rotate_by_euler_angles(90.0, 0.0, 0.0)
-        self.gaussians.transform_data(T, R)
 
         buffer = BytesIO()
         self.gaussians.save_ply(buffer)

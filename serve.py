@@ -12,7 +12,7 @@ from contextlib import asynccontextmanager
 import torch
 import uvicorn
 from loguru import logger
-from fastapi import FastAPI,  UploadFile, File, APIRouter
+from fastapi import FastAPI,  UploadFile, File, APIRouter, Form
 from fastapi.responses import Response, StreamingResponse
 from starlette.datastructures import State
 
@@ -87,7 +87,7 @@ def generation_block(prompt_image: Image.Image, seed: int = -1) -> BytesIO:
     """ Function for 3D data generation using provided image"""
 
     t_start = time()
-    buffer, _ = gaussian_processor.get_model_from_image_as_ply_obj(image=prompt_image, seed=seed)
+    buffer, _ = app.state.trellis_generator.get_model_from_image_as_ply_obj(image=prompt_image, seed=seed)
 
     t_get_model = time()
     logger.debug(f"Model Generation took: {(t_get_model - t_start)} secs.")
