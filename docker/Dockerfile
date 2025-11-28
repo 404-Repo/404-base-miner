@@ -62,7 +62,17 @@ WORKDIR /app
 COPY requirements.txt /app/
 
 RUN pip install packaging
-RUN pip install flash-attn==2.8.0.post2 --no-build-isolation --no-cache-dir
+
+# Install flash-attn with timeout and memory management
+RUN pip install --timeout=1200 --retries=3 \
+    flash-attn==2.8.0.post2 \
+    --no-build-isolation \
+    --no-cache-dir \
+    --verbose \
+    --force-reinstall \
+    || pip install --find-links https://github.com/Dao-AILab/flash-attention/releases \
+       flash-attn==2.8.0.post2 --no-deps
+
 RUN pip install flashinfer-python==0.3.0 flashinfer-cubin==0.4.0rc2
 RUN pip install -r requirements.txt
 
