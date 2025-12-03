@@ -261,8 +261,9 @@ class VRAMUsageEstimator:
         """ Function for estimating gpu mem utilization coefficient. """
 
         vram_info = self.get_current_gpu_vram_usage()
-        mem_coeff = round(estimated_vram / vram_info.free_vram_gb, 2)
+        free_vram = max(vram_info.free_vram_gb, 1e-6)
+        ratio = estimated_vram / free_vram
+
+        mem_coeff = max(ratio, 0.15)
+        mem_coeff = min(mem_coeff, 0.9)
         return mem_coeff
-
-
-
