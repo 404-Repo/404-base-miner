@@ -18,7 +18,7 @@ class BaseBGRemover(ABC):
         pass
 
     @abstractmethod
-    def remove_bg(self, image: Image) -> tuple[Image, bool]:
+    def remove_bg(self, image: Image) -> Image:
         pass
 
     @staticmethod

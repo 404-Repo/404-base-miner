@@ -1,3 +1,5 @@
+#!/bin/bash
+
 # Get the name of the active environment
 active_env=$(conda info --envs | grep '*' | awk '{print $1}')
 

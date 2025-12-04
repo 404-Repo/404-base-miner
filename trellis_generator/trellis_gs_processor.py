@@ -47,8 +47,17 @@ class GaussianProcessor:
         """  Function for unloading all models for image -> 3D pipeline """
 
         for worker in self._bg_removers_workers:
-            worker.unload_model.remote()
-        dist.destroy_process_group()
+            try:
+                worker.unload_model.remote()
+            except Exception as e:
+                logger.warning(f"Failed to unload worker: {e}")
+        
+        # Only destroy process group if it's initialized
+        if dist.is_initialized():
+            try:
+                dist.destroy_process_group()
+            except Exception as e:
+                logger.warning(f"Failed to destroy process group: {e}")
 
         del self._image_to_3d_pipeline
         del self.gaussians
@@ -81,12 +90,16 @@ class GaussianProcessor:
     def _remove_background(self, image: Image.Image, seed: int) -> Image.Image:
         """ Function for removing background from the image. """
 
-        futurs = [worker.run.remote(image) for worker in self._bg_removers_workers]
-        results = ray.get(futurs)
-        image1 = results[0]
-        image2 = results[1]
-        output_image = self._vlm_image_selector.select_with_image_selector(image1, image2, image, seed)
-        return output_image
+        try:
+            futurs = [worker.run.remote(image) for worker in self._bg_removers_workers]
+            results = ray.get(futurs)
+            image1 = results[0]
+            image2 = results[1]
+            output_image = self._vlm_image_selector.select_with_image_selector(image1, image2, image, seed)
+            return output_image
+        except Exception as e:
+            logger.error(f"Error during background removal: {e}")
+            raise
 
     def _generate_3d_object(self, image_no_bg: Image.Image, seed: int) -> BytesIO:
         """ Function for generating a 3D object using an input image without background. """

@@ -22,6 +22,6 @@ class Ben2BGRemover(BaseBGRemover):
         torch.cuda.empty_cache()
         self._bg_remover = None
 
-    def remove_bg(self, image: Image) -> tuple[Image, bool]:
+    def remove_bg(self, image: Image) -> Image:
         result_image = self._bg_remover.inference(image=image, refine_foreground=False)
         return result_image

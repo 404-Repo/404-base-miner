@@ -9,6 +9,7 @@ from collections.abc import AsyncIterator
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
 
+import ray
 import torch
 import uvicorn
 from loguru import logger
@@ -17,21 +18,22 @@ from fastapi.responses import Response, StreamingResponse
 from starlette.datastructures import State
 
 from trellis_generator.trellis_gs_processor import GaussianProcessor
+from config import config
 
 
 # Setting up default attention backend for trellis generator: can be 'flash-attn' or 'xformers'
-os.environ['ATTN_BACKEND'] = 'flash-attn'
+os.environ['ATTN_BACKEND'] = config.model.attn_backend
 
 
 def get_args() -> argparse.Namespace:
     """ Function for getting arguments """
     parser = argparse.ArgumentParser()
-    parser.add_argument("--host", default="0.0.0.0")
-    parser.add_argument("--port", type=int, default=10006)
+    parser.add_argument("--host", default=config.server.host)
+    parser.add_argument("--port", type=int, default=config.server.port)
     return parser.parse_args()
 
 
-executor = ThreadPoolExecutor(max_workers=1)
+executor = ThreadPoolExecutor(max_workers=config.server.max_workers)
 
 
 class MyFastAPI(FastAPI):
@@ -43,6 +45,11 @@ class MyFastAPI(FastAPI):
 @asynccontextmanager
 async def lifespan(app: MyFastAPI) -> AsyncIterator[None]:
     """ Function that loading all models and warming up the generation."""
+    # Initialize Ray
+    if not ray.is_initialized():
+        ray.init(ignore_reinit_error=config.ray.ignore_reinit_error)
+        logger.info("Ray initialized successfully.")
+    
     major, minor = torch.cuda.get_device_capability(0)
 
     if major == 9:
@@ -52,7 +59,7 @@ async def lifespan(app: MyFastAPI) -> AsyncIterator[None]:
 
     try:
         logger.info("Loading Trellis generator model...")
-        app.state.trellis_generator = GaussianProcessor((int(1024 / 2), int(1024 / 2), 3), vllm_flash_attn_backend)
+        app.state.trellis_generator = GaussianProcessor(config.image.default_image_shape, vllm_flash_attn_backend)
         app.state.trellis_generator.load_models()
         clean_vram()
         logger.info("Model loading is complete.")
@@ -71,6 +78,11 @@ async def lifespan(app: MyFastAPI) -> AsyncIterator[None]:
         raise SystemExit("Warm-up failed → exiting server")
 
     yield
+    
+    # Cleanup Ray on shutdown
+    if ray.is_initialized():
+        ray.shutdown()
+        logger.info("Ray shutdown successfully.")
 
 
 app = MyFastAPI(title="404 Base Miner Service", version="0.0.0")
@@ -94,7 +106,7 @@ def generation_block(prompt_image: Image.Image, seed: int = -1) -> BytesIO:
 
     clean_vram()
 
-    t_gc= time()
+    t_gc = time()
     logger.debug(f"Garbage Collection took: {(t_gc - t_get_model)} secs")
 
     return buffer
@@ -106,14 +118,42 @@ async def generate_model(prompt_image_file: UploadFile = File(...), seed: int = 
 
     logger.info("Task received. Prompt-Image")
 
-    contents = await prompt_image_file.read()
-    prompt_image = Image.open(BytesIO(contents))
+    try:
+        # Validate file type
+        if not prompt_image_file.content_type or not prompt_image_file.content_type.startswith('image/'):
+            logger.warning(f"Invalid content type: {prompt_image_file.content_type}")
+        
+        contents = await prompt_image_file.read()
+        
+        # Validate file size
+        max_size = config.image.max_file_size_mb * 1024 * 1024
+        if len(contents) > max_size:
+            logger.error(f"File size {len(contents)} exceeds maximum {max_size}")
+            return Response(content=f"File size exceeds {config.image.max_file_size_mb}MB limit", status_code=400)
+        
+        if len(contents) == 0:
+            logger.error("Empty file received")
+            return Response(content="Empty file received", status_code=400)
+        
+        prompt_image = Image.open(BytesIO(contents))
+        
+        # Validate image dimensions
+        if prompt_image.size[0] < config.image.min_width or prompt_image.size[1] < config.image.min_height:
+            logger.error(f"Image too small: {prompt_image.size}")
+            return Response(
+                content=f"Image must be at least {config.image.min_width}x{config.image.min_height} pixels",
+                status_code=400
+            )
 
-    loop = asyncio.get_running_loop()
-    buffer = await loop.run_in_executor(executor, generation_block, prompt_image, seed)
-    logger.info(f"Task completed.")
+        loop = asyncio.get_running_loop()
+        buffer = await loop.run_in_executor(executor, generation_block, prompt_image, seed)
+        logger.info("Task completed.")
 
-    return StreamingResponse(buffer, media_type="application/octet-stream")
+        return StreamingResponse(buffer, media_type="application/octet-stream")
+    
+    except Exception as e:
+        logger.exception(f"Error during model generation: {e}")
+        return Response(content=f"Error processing image: {str(e)}", status_code=500)
 
 
 @app.get("/version", response_model=str)
@@ -123,9 +163,14 @@ async def version() -> str:
 
 
 @app.get("/health")
-def health_check() -> dict[str, str]:
-    """ Return if the server is alive """
-    return {"status": "healthy"}
+def health_check() -> dict[str, str | bool]:
+    """ Return if the server is alive and model status """
+    model_loaded = hasattr(app.state, 'trellis_generator') and app.state.trellis_generator is not None
+    return {
+        "status": "healthy",
+        "model_loaded": model_loaded,
+        "ray_initialized": ray.is_initialized()
+    }
 
 
 if __name__ == "__main__":

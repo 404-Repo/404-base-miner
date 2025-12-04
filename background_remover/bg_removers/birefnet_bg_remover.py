@@ -30,7 +30,7 @@ class BiRefNetBGRemover(BaseBGRemover):
         torch.cuda.empty_cache()
         self._bg_remover = None
 
-    def remove_bg(self, image: Image) -> tuple[Image, bool]:
+    def remove_bg(self, image: Image) -> Image:
         result_image = image
 
         input_image = self._transform_image(result_image).unsqueeze(0).to(self._device).half()

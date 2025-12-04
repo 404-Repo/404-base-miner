@@ -14,12 +14,12 @@ including Geforce 5090 RTX.
 
 ### Installation
 
-- Docker (building & pushing to remote register):
+- Docker (building & pushing to remote registry):
 ```console
-cd /docker
+cd docker
 docker build --build-arg GITHUB_USER="" --build-arg GITHUB_TOKEN="" -t docker_name:docker-tag .
-docker tag docker_name:docker-tag docker-register-path:docker-register-name
-docker push docker-register-path:docker-register-name   
+docker tag docker_name:docker-tag docker-registry-path:docker-registry-name
+docker push docker-registry-path:docker-registry-name   
 ```
 - Conda Env. (shell script will install everything you need to run the project):
 ```console
@@ -28,9 +28,9 @@ bash setup_env.sh
 ### How to run:
 - Docker (run locally):
 ```commandline
-docker run --gpus all -it docker_name:docker-tag bash
+docker run --gpus all -p 10006:10006 -it docker_name:docker-tag
 
-# outside docker
+# In another terminal, test the endpoint
 curl -X POST "http://0.0.0.0:10006/generate" -F "prompt_image_file=@/path/to/your/image.png" > model.ply
 ```
 - Conda Env.:
