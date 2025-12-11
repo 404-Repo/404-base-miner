@@ -62,8 +62,8 @@ WORKDIR /app
 COPY requirements.txt /app/
 
 RUN pip install packaging
-RUN pip install flash-attn==2.8.0.post2 --no-build-isolation --no-cache-dir
-RUN pip install flashinfer-python==0.5.2 flashinfer-cubin==0.5.2 --no-build-isolation --no-cache-dir
+RUN pip install flash-attn==2.8.0.post2 --no-build-isolation
+RUN pip install flashinfer-python==0.5.2 flashinfer-cubin==0.5.2 --no-build-isolation
 RUN pip install -r requirements.txt
 
 # Copy source code after dependencies
