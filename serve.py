@@ -113,7 +113,19 @@ async def generate_model(prompt_image_file: UploadFile = File(...), seed: int = 
     buffer = await loop.run_in_executor(executor, generation_block, prompt_image, seed)
     logger.info(f"Task completed.")
 
-    return StreamingResponse(buffer, media_type="application/octet-stream")
+    buffer_size = len(buffer.getvalue())
+    buffer.seek(0)
+
+    async def generate_chunks():
+        chunk_size = 1024 * 1024  # 1 MB
+        while chunk := buffer.read(chunk_size):
+            yield chunk
+
+    return StreamingResponse(
+        generate_chunks(),
+        media_type="application/octet-stream",
+        headers={"Content-Length": str(buffer_size)}
+    )
 
 
 @app.get("/version", response_model=str)
