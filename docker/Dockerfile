@@ -1,12 +1,6 @@
 # Trellis based generator
 FROM pytorch/pytorch:2.7.1-cuda12.8-cudnn9-runtime
 
-ARG GITHUB_USER
-ENV GITHUB_USER=${GITHUB_USER}
-
-ARG GITHUB_TOKEN
-ENV GITHUB_TOKEN=${GITHUB_TOKEN}
-
 ENV DEBIAN_FRONTEND=noninteractive
 
 LABEL name="trellis-gen" maintainer="404gen"
@@ -61,7 +55,10 @@ WORKDIR /app
 # Copy requirements first for better caching
 COPY requirements.txt /app/
 
-RUN pip install packaging
+# Mount GitHub token as secret for pip install
+RUN --mount=type=secret,id=github_token \
+    GITHUB_TOKEN=$(cat /run/secrets/github_token 2>/dev/null || echo "") && \
+    pip install packaging
 RUN pip install https://github.com/Dao-AILab/flash-attention/releases/download/v2.8.0.post2/flash_attn-2.8.0.post2+cu12torch2.7cxx11abiTRUE-cp311-cp311-linux_x86_64.whl
 RUN pip install flashinfer-python==0.5.2 flashinfer-cubin==0.5.2 --no-build-isolation
 RUN pip install -r requirements.txt
